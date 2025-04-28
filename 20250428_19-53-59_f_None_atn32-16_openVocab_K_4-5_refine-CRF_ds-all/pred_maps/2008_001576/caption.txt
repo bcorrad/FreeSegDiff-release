@@ -1,0 +1,2 @@
+['little girl', 'girl', 'chair', 'computer']
+a little girl sitting in a chair in front of a computer --> aeroplane, bicycle, bird, boat, bottle, bus, car, cat, chair, cow, dog, horse, motorbike, person, pottedplant, sheep, sofa, train, tvmonitor, little girl, girl, computer

@@ -1,0 +1,2 @@
+['brown dog', 'white brown', 'dog', 'kitchen', 'floor']
+a brown and white dog standing on a kitchen floor --> aeroplane, bicycle, bird, boat, bottle, bus, car, cat, chair, cow, dog, horse, motorbike, person, pottedplant, sheep, sofa, train, tvmonitor, brown dog, white brown, kitchen, floor

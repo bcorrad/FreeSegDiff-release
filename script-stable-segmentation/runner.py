@@ -13,6 +13,8 @@ from segment import imageSegmentor
 def runSegmentation(imgsDir: Union[os.PathLike, str]):
     # text conditioning
     encs_list = []
+    total_time_list = []
+    image_timer_list = []
     for i in range(len(segmentationClasses)):
         if len(segmentationClasses[i].split()) > 1:
             batch_encs_list = []
@@ -37,7 +39,9 @@ def runSegmentation(imgsDir: Union[os.PathLike, str]):
 
     evalMetrics_matrix = []
     source = os.listdir(imgsDir)
+    
     for img in tqdm(source):
+        image_timer_st = time.time()
         pipeline_dts = {} 
         imageName = os.path.splitext(img)[0]
         if evaluateImages and not os.path.exists(os.path.join(dataset.dataset_maps_npz_folder, f'{imageName}.npz')):
@@ -94,27 +98,45 @@ def runSegmentation(imgsDir: Union[os.PathLike, str]):
 
         SDM_et = time.time()
         SDM_dt = SDM_et - SDM_st
-        pipeline_dts['DSM'] = SDM_dt
+        pipeline_dts['SDM'] = SDM_dt
 
-        if collectUnetFeatures:
-            feature_store = feature_maps_resized
-            f = feature_store.reshape(np.prod(feature_store.shape[:-2]), -1)
-            if adaptiveK > 0:
-                imageSegmentor(f[None], pngNamePrefix=f'f', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, bestK=len(candidateClasses)+adaptiveK, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
-            else:
-                imageSegmentor(f[None], pngNamePrefix=f'f', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
-        if collectUnetAttention:
-            attention_store = attention_scores_resized
-            a = attention_store.reshape(np.prod(attention_store.shape[:-2]), -1)
-            if adaptiveK > 0:
-                imageSegmentor(a[None], pngNamePrefix=f'a', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, bestK=len(candidateClasses)+adaptiveK, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
-            else:    
-                imageSegmentor(a[None], pngNamePrefix=f'a', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
         if collectUnetFeatures and collectUnetAttention:
             af = np.concatenate((a, f), axis=0)
             if adaptiveK > 0:
-                imageSegmentor(af[None], pngNamePrefix=f'af', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, bestK=len(candidateClasses)+adaptiveK, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
+                clip_dt = imageSegmentor(af[None], pngNamePrefix=f'af', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, bestK=len(candidateClasses)+adaptiveK, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
             else:
-                imageSegmentor(af[None], pngNamePrefix=f'af', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
+                clip_dt = imageSegmentor(af[None], pngNamePrefix=f'af', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
+        elif collectUnetFeatures and not collectUnetAttention:
+            feature_store = feature_maps_resized
+            f = feature_store.reshape(np.prod(feature_store.shape[:-2]), -1)
+            if adaptiveK > 0:
+                clip_dt = imageSegmentor(f[None], pngNamePrefix=f'f', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, bestK=len(candidateClasses)+adaptiveK, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
+            else:
+                clip_dt = imageSegmentor(f[None], pngNamePrefix=f'f', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
+        elif collectUnetAttention and not collectUnetFeatures:
+            attention_store = attention_scores_resized
+            a = attention_store.reshape(np.prod(attention_store.shape[:-2]), -1)
+            if adaptiveK > 0:
+                clip_dt = imageSegmentor(a[None], pngNamePrefix=f'a', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, bestK=len(candidateClasses)+adaptiveK, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
+            else:    
+                clip_dt = imageSegmentor(a[None], pngNamePrefix=f'a', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
+        
+        image_timer_et = time.time()
+        image_timer_dt = image_timer_et - image_timer_st
+        print(f"Image processing time: {image_timer_dt:.2f} seconds")
+        image_timer_list.append(image_timer_dt)
+        
         pilImage.close()
         
+        pipeline_dts['CLIP'] = clip_dt
+        # Sum the times for each image
+        pipeline_dts['total'] = SDM_dt + blip_dt + clip_dt['CLIP_dt'] + clip_dt['refine']
+        print(f"Pipeline total time: {pipeline_dts['total']:.2f} seconds")
+        # Append the total time for this image to the list
+        total_time_list.append(pipeline_dts['total'])
+        
+    # Save the average time for all images
+    avg_time = sum(total_time_list) / len(total_time_list)
+    print(f"Average time for all images: {avg_time:.2f} seconds")
+    image_timer_avg = sum(image_timer_list) / len(image_timer_list)
+    print(f"Average image processing time: {image_timer_avg:.2f} seconds")

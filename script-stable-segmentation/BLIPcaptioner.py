@@ -53,6 +53,7 @@ def BLIPImageCaptioner(image: Image, classesEncodings: list, img_pred_maps_folde
         image = vis_processors["eval"](image).unsqueeze(0).to(DEVICE)
         caption = model.generate({"image": image})[0]
         BLIP_et = time.time()
+        print(f'BLIP caption: {caption}')
         nlp = spacy.load("en_core_web_sm")
         doc = nlp(caption)
         filteredWordsList = []
@@ -60,9 +61,10 @@ def BLIPImageCaptioner(image: Image, classesEncodings: list, img_pred_maps_folde
             if not token.is_stop and (token.pos_ == "NOUN" or token.pos_ == "ADJ"):
                 if token.pos_ == "ADJ":
                     noun_chunk = token.head
-                else:
+                elif token.pos_ == "NOUN":
                     noun_chunk = token.text
                 filteredWordsList.append(noun_chunk)
+        print(f'Filtered words: {filteredWordsList}')
         for word in filteredWordsList:
             filteredWordsEncsList.append(pipe._encode_prompt(f"{word}", pipe.device, 1, False, None).cpu().mean(1).squeeze(0)) # 768
         distCorrMatrix = np.zeros((len(filteredWordsEncsList), len(classesEncodings)))

@@ -6,7 +6,7 @@ from transformers import CLIPProcessor, CLIPModel
 import torch
 
 # prepare CLIP
-CLIP_path = "/home/corradini/.models/clip-vit-base-patch32"
+CLIP_path = "/repo/corradini/clip-vit-base-patch32"
 CLIP_model = CLIPModel.from_pretrained(CLIP_path).to(DEVICE)
 CLIP_processor = CLIPProcessor.from_pretrained(CLIP_path)
 # prepare SDM

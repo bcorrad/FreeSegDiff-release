@@ -1,0 +1,2 @@
+['small bird', 'bird', 'branch', 'tree']
+a small bird perched on a branch of a tree --> aeroplane, bicycle, bird, boat, bottle, bus, car, cat, chair, cow, dog, horse, motorbike, person, pottedplant, sheep, sofa, train, tvmonitor, small bird, branch, tree

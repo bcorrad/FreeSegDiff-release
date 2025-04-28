@@ -11,7 +11,7 @@ from pamr import BinaryPamr
 from models import CLIP_processor, CLIP_model, refiner
 from utils import savePredictedMask, clustering_on_tensor
 from evaluation import metricsEvaluation
-from config import dataset, evaluateImages, segmentation_supercategories, segmentation_supercategories_names, colors, pipeline_dts, \
+from config import dataset, evaluateImages, segmentation_supercategories, segmentation_supercategories_names, colors, \
                     segmentation_classes, segmentationClasses, maskRefinement, DEVICE, reports_folder, MIN_N_CLUSTERS, MAX_N_CLUSTERS
 
 def imageSegmentor(tensorToCluster: np.array, 
@@ -24,6 +24,7 @@ def imageSegmentor(tensorToCluster: np.array,
                    bestK: int=None, 
                    segmentationClasses_: list=None,
                    savePredictedMasks: bool=True):
+    pipeline_dts = {} # dictionary to store the time taken by each step of the pipeline (BLIP, CLIP, mask refinement)
     
     H, W, C = origImgToBeMasked.shape
 
@@ -182,4 +183,4 @@ def imageSegmentor(tensorToCluster: np.array,
                                 None,
                                 os.path.join(img_pred_maps_folder, f"{pngNamePrefix}_{imageName}_clusters_{K}.png"))
 
-        # return CLIP_dt
+        return pipeline_dts
