@@ -1,2 +1,0 @@
-['group', 'people', 'building']
-a group of people walking through a building --> aeroplane, bicycle, bird, boat, bottle, bus, car, cat, chair, cow, dog, horse, motorbike, person, pottedplant, sheep, sofa, train, tvmonitor, group, people, building

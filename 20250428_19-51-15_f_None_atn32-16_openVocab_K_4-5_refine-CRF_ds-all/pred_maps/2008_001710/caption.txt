@@ -1,2 +1,0 @@
-['group', 'men', 'train']
-a group of men standing next to a train --> aeroplane, bicycle, bird, boat, bottle, bus, car, cat, chair, cow, dog, horse, motorbike, person, pottedplant, sheep, sofa, train, tvmonitor, group, men
