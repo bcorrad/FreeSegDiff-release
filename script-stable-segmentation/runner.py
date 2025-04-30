@@ -15,8 +15,11 @@ BLIP_DT = 0.0
 def runSegmentation(imgsDir: Union[os.PathLike, str]):
     # text conditioning
     encs_list = []
-    total_time_list = []
     IMAGE_PROC_DT_LIST = []
+    BLIP_DT_LIST = []
+    SEGMENTATION_DT_LIST = []
+    SDM_DT_LIST = []
+    
     for i in range(len(segmentationClasses)):
         if len(segmentationClasses[i].split()) > 1:
             batch_encs_list = []
@@ -59,8 +62,12 @@ def runSegmentation(imgsDir: Union[os.PathLike, str]):
         if inferCandidateClasses:
             if openVocab:
                 caption, filteredWordsList, candidateClasses, BLIP_DT = BLIPImageCaptioner(image=pilImage, classesEncodings=None, img_pred_maps_folder=img_pred_maps_folder, pipe=pipe)
+                print(f"=== BLIP time: {BLIP_DT:.2f} seconds")
+                BLIP_DT_LIST.append(BLIP_DT)
             else:
                 caption, filteredWordsList, candidateClasses, BLIP_DT = BLIPImageCaptioner(image=pilImage, classesEncodings=encs_list, img_pred_maps_folder=img_pred_maps_folder, pipe=pipe)
+                print(f"=== BLIP time: {BLIP_DT:.2f} seconds")
+                BLIP_DT_LIST.append(BLIP_DT)
         else:
             candidateClasses = [i for i in range(len(segmentationClasses))]
         if candidateClassesBottleneck:
@@ -89,17 +96,16 @@ def runSegmentation(imgsDir: Union[os.PathLike, str]):
         print(attn_hook.selectBlock)
 
         SDM_st = time.time()
-        
         for i in range(len(timesteps)): # run unet and get output from the attention hook
             noise_pred = pipe.unet(noisy_latents[i:i+1], timesteps[i:i+1], encoder_hidden_states=null_embeddings).sample
             if collectUnetAttention:
                 attention_scores_resized, attention_scores_dict = attn_hook.computeAttentionMaps()
             if collectUnetFeatures:
                 feature_maps_resized = attn_hook.computeFeatureMaps()
-
         SDM_et = time.time()
-        SDM_dt = SDM_et - SDM_st
-        pipeline_dts['SDM'] = SDM_dt
+        SDM_DT = SDM_et - SDM_st
+        print(f"=== SDM time: {SDM_DT:.2f} seconds")
+        SDM_DT_LIST.append(SDM_DT)
 
         if collectUnetFeatures and collectUnetAttention:
             af = np.concatenate((a, f), axis=0)
@@ -108,13 +114,16 @@ def runSegmentation(imgsDir: Union[os.PathLike, str]):
                 imageSegmentor(af[None], pngNamePrefix=f'af', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, bestK=len(candidateClasses)+adaptiveK, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
                 SEGMENTATION_END = time.time()
                 SEGMENTATION_DT = SEGMENTATION_END - SEGMENTATION_START
-                print(f"Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                print(f"=== Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                SEGMENTATION_DT_LIST.append(SEGMENTATION_DT)
             else:
                 SEGMENTATION_START = time.time()
                 imageSegmentor(af[None], pngNamePrefix=f'af', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
                 SEGMENTATION_END = time.time()
                 SEGMENTATION_DT = SEGMENTATION_END - SEGMENTATION_START
-                print(f"Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                print(f"=== Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                SEGMENTATION_DT_LIST.append(SEGMENTATION_DT)
+                
         elif collectUnetFeatures and not collectUnetAttention:
             feature_store = feature_maps_resized
             f = feature_store.reshape(np.prod(feature_store.shape[:-2]), -1)
@@ -123,13 +132,15 @@ def runSegmentation(imgsDir: Union[os.PathLike, str]):
                 imageSegmentor(f[None], pngNamePrefix=f'f', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, bestK=len(candidateClasses)+adaptiveK, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
                 SEGMENTATION_END = time.time()
                 SEGMENTATION_DT = SEGMENTATION_END - SEGMENTATION_START
-                print(f"Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                print(f"=== Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                SEGMENTATION_DT_LIST.append(SEGMENTATION_DT)
             else:
                 SEGMENTATION_START = time.time()
                 imageSegmentor(f[None], pngNamePrefix=f'f', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
                 SEGMENTATION_END = time.time()
                 SEGMENTATION_DT = SEGMENTATION_END - SEGMENTATION_START
-                print(f"Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                print(f"=== Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                SEGMENTATION_DT_LIST.append(SEGMENTATION_DT)
         elif collectUnetAttention and not collectUnetFeatures:
             attention_store = attention_scores_resized
             a = attention_store.reshape(np.prod(attention_store.shape[:-2]), -1)
@@ -138,22 +149,24 @@ def runSegmentation(imgsDir: Union[os.PathLike, str]):
                 imageSegmentor(a[None], pngNamePrefix=f'a', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, bestK=len(candidateClasses)+adaptiveK, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
                 SEGMENTATION_END = time.time()
                 SEGMENTATION_DT = SEGMENTATION_END - SEGMENTATION_START
-                print(f"Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                print(f"=== Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                SEGMENTATION_DT_LIST.append(SEGMENTATION_DT)
             else:    
                 SEGMENTATION_START = time.time()
                 imageSegmentor(a[None], pngNamePrefix=f'a', evalMetrics_matrix=evalMetrics_matrix, img_pred_maps_folder=img_pred_maps_folder, imageName=imageName, origImgToBeMasked=origImgToBeMasked, candidateClasses=candidateClasses, segmentationClasses_=filteredWordsList, savePredictedMasks=savePredictedMasks)
                 SEGMENTATION_END = time.time()
                 SEGMENTATION_DT = SEGMENTATION_END - SEGMENTATION_START
-                print(f"Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                print(f"=== Segmentation time: {SEGMENTATION_DT:.2f} seconds")
+                SEGMENTATION_DT_LIST.append(SEGMENTATION_DT)
         
         pilImage.close()
         
-        PIPELINE_DT = BLIP_DT + SDM_dt + SEGMENTATION_DT
+        PIPELINE_DT = BLIP_DT + SDM_DT + SEGMENTATION_DT
         IMAGE_PROC_DT_LIST.append(PIPELINE_DT)
         print(f"Pipeline time: {PIPELINE_DT:.2f} seconds")
-        
-    # Save the average time for all images
-    avg_time = sum(total_time_list) / len(total_time_list)
-    print(f"Average time for all images: {avg_time:.2f} seconds")
-    image_timer_avg = sum(IMAGE_PROC_DT_LIST) / len(IMAGE_PROC_DT_LIST)
-    print(f"Average image processing time: {image_timer_avg:.2f} seconds")
+
+    # Print the average times
+    print(f"Average BLIP time: {sum(BLIP_DT_LIST) / len(BLIP_DT_LIST):.2f} seconds")
+    print(f"Average SDM time: {sum(SDM_DT_LIST) / len(SDM_DT_LIST):.2f} seconds")
+    print(f"Average Segmentation time: {sum(SEGMENTATION_DT_LIST) / len(SEGMENTATION_DT_LIST):.2f} seconds")
+    print(f"Average image processing time: {sum(IMAGE_PROC_DT_LIST) / len(IMAGE_PROC_DT_LIST):.2f} seconds")
